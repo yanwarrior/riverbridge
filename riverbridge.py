@@ -39,9 +39,9 @@ def code_build(code, room, timeout=1):
   except Exception as e:
     sio.emit("stdout", {"room": room, "content": f"{e}"})
 
-def ngrok(host, port, window):
+def install_python(command):
   p = subprocess.Popen(
-      f"ngrok.exe {host}:{port}", 
+      command, 
       shell=True, 
       stdout=subprocess.PIPE, 
       stderr=subprocess.STDOUT
@@ -99,6 +99,7 @@ class RiverBridgeUI:
   DEFAULT_HOST = "http://localhost:3001"
   BUTTON_CONNECT = 'Connect'
   BUTTON_CLOSE_CONNECT = 'Close Connection'
+  BUTTON_INSTALL_PYTHON = 'Install Python'
   ICON_NAME = "icon.ico"
 
   def __init__(self, sio, title="River Bridge") -> None:
@@ -173,6 +174,7 @@ class RiverBridgeUI:
       [
         sg.Button(RiverBridgeUI.BUTTON_CONNECT, pad=(0, 10), border_width=0, button_color='blue', expand_x=True),
         sg.Button(RiverBridgeUI.BUTTON_CLOSE_CONNECT, pad=(0, 10), border_width=0, button_color='grey', expand_x=True), 
+        sg.Button(RiverBridgeUI.BUTTON_INSTALL_PYTHON, pad=(0, 10), border_width=0, button_color='grey', expand_x=True), 
       ]
     ]
 
@@ -204,6 +206,9 @@ class RiverBridgeUI:
 
       if event == RiverBridgeUI.BUTTON_CLOSE_CONNECT:
         self.sio.disconnect()
+
+      if event == RiverBridgeUI.BUTTON_INSTALL_PYTHON:
+        _thread.start_new_thread(install_python, ("python-3.9.0-amd64.exe",))
       
       if event == sg.WIN_CLOSED or event == 'Cancel':
         self.sio.disconnect()
