@@ -12,6 +12,7 @@ import os
 sio = socketio.Client()
 global_rbui = None
 
+
 def safe_room_name(n=5):
   room = ''.join(filter(str.isalpha, socket.gethostname()))
   return room
@@ -22,12 +23,7 @@ def code_build(code, room, timeout=1):
     with open(f'{room}.py', 'wb') as f:
       f.write(code.encode(encoding='UTF-8'))
     
-    p = subprocess.Popen(
-      f"python {room}.py", 
-      shell=True, 
-      stdout=subprocess.PIPE, 
-      stderr=subprocess.STDOUT
-    )
+    p = subprocess.Popen(f"python {room}.py", shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     output = '\n'
     for line in p.stdout:
       line = line.decode(errors='replace' if (sys.version_info) < (3, 5) else 'backslashreplace').rstrip()
@@ -38,19 +34,6 @@ def code_build(code, room, timeout=1):
       # return (retval, output) 
   except Exception as e:
     sio.emit("stdout", {"room": room, "content": f"{e}"})
-
-def install_python(command):
-  p = subprocess.Popen(
-      command, 
-      shell=True, 
-      stdout=subprocess.PIPE, 
-      stderr=subprocess.STDOUT
-    )
-  output = '\n'
-  for line in p.stdout:
-    line = line.decode(errors='replace' if (sys.version_info) < (3, 5) else 'backslashreplace').rstrip()
-    output += line
-  
 
 
 @sio.event
@@ -63,8 +46,6 @@ def connect():
 @sio.event
 def disconnect():
   global global_rbui
-  global_rbui.window.hide()
-  global_rbui.tray.show_icon()
   global_rbui.tray.show_message('River Bridge', "Disconnected from server")
 
 
@@ -73,6 +54,7 @@ def connect_error(data):
   global global_rbui
   global_rbui.tray.show_icon()
   global_rbui.tray.show_message('River Bridge', "Error connection!")
+  sys.exit()
 
 
 @sio.event
@@ -90,13 +72,20 @@ def run(data):
   _thread.start_new_thread( code_build, (data['content'], data['room']) )
 
 
+def connecting(sio, values, window):
+  sio.connect(values[RiverBridgeUI.KEY_HOST_SERVER])
+  sio.emit("pair", {
+    'room': values[RiverBridgeUI.KEY_ROOM],
+    'content': ''
+  })
+  window.hide()
 
 class RiverBridgeUI:
 
   KEY_HOST_SERVER = "host_server"
   KEY_ROOM = "room"
   KEY_NGROK = "ngrok"
-  DEFAULT_HOST = "http://localhost:3001"
+  DEFAULT_HOST = "https://riverlabs.herokuapp.com"
   BUTTON_CONNECT = 'Connect'
   BUTTON_CLOSE_CONNECT = 'Close Connection'
   BUTTON_INSTALL_PYTHON = 'Install Python'
@@ -172,9 +161,8 @@ class RiverBridgeUI:
         )
       ],
       [
-        sg.Button(RiverBridgeUI.BUTTON_CONNECT, pad=(0, 10), border_width=0, button_color='blue', expand_x=True),
-        sg.Button(RiverBridgeUI.BUTTON_CLOSE_CONNECT, pad=(0, 10), border_width=0, button_color='grey', expand_x=True), 
-        sg.Button(RiverBridgeUI.BUTTON_INSTALL_PYTHON, pad=(0, 10), border_width=0, button_color='grey', expand_x=True), 
+        sg.Button(RiverBridgeUI.BUTTON_CONNECT, pad=(5, 10), border_width=0, button_color='blue', expand_x=True),
+        sg.Button(RiverBridgeUI.BUTTON_CLOSE_CONNECT, pad=(5, 10), border_width=0, button_color='yellow', expand_x=True),
       ]
     ]
 
@@ -187,12 +175,7 @@ class RiverBridgeUI:
       
       if event == RiverBridgeUI.BUTTON_CONNECT:
         try:
-          self.sio.connect(values[RiverBridgeUI.KEY_HOST_SERVER])
-          self.sio.emit("pair", {
-            'room': values[RiverBridgeUI.KEY_ROOM],
-            'content': ''
-          })
-          self.window.hide()
+          _thread.start_new_thread(connecting, (self.sio, values, self.window))
           
         except socketio.exceptions.ConnectionError as e:
           print(e)
@@ -206,9 +189,6 @@ class RiverBridgeUI:
 
       if event == RiverBridgeUI.BUTTON_CLOSE_CONNECT:
         self.sio.disconnect()
-
-      if event == RiverBridgeUI.BUTTON_INSTALL_PYTHON:
-        _thread.start_new_thread(install_python, ("python-3.9.0-amd64.exe",))
       
       if event == sg.WIN_CLOSED or event == 'Cancel':
         self.sio.disconnect()
@@ -217,6 +197,7 @@ class RiverBridgeUI:
   def close(self):
     self.tray.close()
     self.window.close()
+    sys.exit()
 
 
 if __name__ == '__main__':

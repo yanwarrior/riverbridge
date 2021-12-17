@@ -31,7 +31,7 @@ build_exe_options = {
         "PySimpleGUI", "subprocess", "sys",
         "webbrowser", "psgtray", "os", "pystray",
         "tkinter"],
-    'include_files': ['icon.ico', 'cloud.png', 'python-3.9.0-amd64.exe',],
+    'include_files': ['icon.ico', 'cloud.png',],
     'include_msvcr': True,
 }
 
